@@ -1,0 +1,225 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2759
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 <!DOCTYPE html>\
+<html lang="en">\
+<head>\
+    <meta charset="UTF-8">\
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">\
+    <title>Guess the Rule Game</title>\
+    <script src="https://cdn.tailwindcss.com"></script>\
+    <style>\
+        body \{\
+            font-family: 'Inter', sans-serif;\
+            background-color: #f3f4f6;\
+            display: flex;\
+            justify-content: center;\
+            align-items: center;\
+            height: 100vh;\
+            margin: 0;\
+            padding: 1rem;\
+        \}\
+        .container \{\
+            max-width: 600px;\
+            width: 100%;\
+        \}\
+        .box \{\
+            background-color: white;\
+            border-radius: 1rem;\
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);\
+            padding: 2rem;\
+        \}\
+        .input-output-grid \{\
+            display: grid;\
+            grid-template-columns: 1fr 1fr;\
+            gap: 1rem;\
+            text-align: center;\
+        \}\
+    </style>\
+</head>\
+<body>\
+\
+<div class="container">\
+    <div class="box">\
+        <h1 class="text-3xl font-bold text-center text-gray-900 mb-6">Guess the Rule</h1>\
+        <p class="text-center text-gray-600 mb-6">Can you figure out the algebraic rule from the examples?</p>\
+\
+        <!-- Game Interface -->\
+        <div id="game-board" class="space-y-6">\
+\
+            <!-- Input/Output Display -->\
+            <div id="io-display" class="space-y-4">\
+                <!-- Data pairs will be appended here by JavaScript -->\
+            </div>\
+\
+            <!-- Current Pair and Input -->\
+            <div class="input-output-grid">\
+                <div class="bg-gray-100 p-4 rounded-lg">\
+                    <p class="text-sm font-semibold text-gray-500">Input (x)</p>\
+                    <p id="current-input" class="text-3xl font-bold text-gray-800">-</p>\
+                </div>\
+                <div class="bg-gray-100 p-4 rounded-lg">\
+                    <p class="text-sm font-semibold text-gray-500">Output (y)</p>\
+                    <p id="current-output" class="text-3xl font-bold text-gray-800">-</p>\
+                </div>\
+            </div>\
+\
+            <!-- Guess Input and Submit Button -->\
+            <div class="flex flex-col md:flex-row gap-4 mt-6">\
+                <input type="text" id="rule-guess" placeholder="Your guess, e.g., 'x + 5'" class="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">\
+                <button id="submit-button" class="bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-indigo-700 transition duration-200 ease-in-out">\
+                    Submit Guess\
+                </button>\
+            </div>\
+            \
+            <!-- Message Display -->\
+            <div id="message-area" class="text-center font-medium mt-4"></div>\
+\
+            <!-- New Round Button -->\
+            <div class="text-center">\
+                <button id="new-round-button" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-gray-300 transition duration-200 ease-in-out">\
+                    New Round\
+                </button>\
+            </div>\
+        </div>\
+    </div>\
+</div>\
+\
+<script>\
+    // Constants and DOM elements\
+    const ioDisplay = document.getElementById('io-display');\
+    const currentInputEl = document.getElementById('current-input');\
+    const currentOutputEl = document.getElementById('current-output');\
+    const guessInput = document.getElementById('rule-guess');\
+    const submitButton = document.getElementById('submit-button');\
+    const newRoundButton = document.getElementById('new-round-button');\
+    const messageArea = document.getElementById('message-area');\
+\
+    // Array of possible rules with their functions and a displayable string\
+    const rules = [\
+        \{ func: (x) => x + 5, text: "x + 5" \},\
+        \{ func: (x) => x - 3, text: "x - 3" \},\
+        \{ func: (x) => 2 * x, text: "2x" \},\
+        \{ func: (x) => x / 2, text: "x/2" \},\
+        \{ func: (x) => 3 * x + 1, text: "3x + 1" \},\
+        \{ func: (x) => x / 2 - 4, text: "x/2 - 4" \},\
+        \{ func: (x) => 5 - x, text: "5 - x" \},\
+        \{ func: (x) => 10 - 2 * x, text: "10 - 2x" \},\
+        \{ func: (x) => x * x, text: "x^2" \},\
+        \{ func: (x) => Math.sqrt(x), text: "sqrt(x)" \},\
+    ];\
+    let currentRule = null;\
+    let ioPairs = []; // Stores input/output pairs for the current round\
+    let roundAttempts = 0;\
+    const maxAttempts = 3;\
+\
+    // --- Game Logic Functions ---\
+\
+    /**\
+     * Generates a new random input and its corresponding output based on the current rule.\
+     * @returns \{void\}\
+     */\
+    function generateNewPair() \{\
+        // Generate a random integer between 1 and 10 (inclusive)\
+        const input = Math.floor(Math.random() * 10) + 1;\
+        // Calculate the output using the current rule\
+        const output = currentRule.func(input);\
+        // Store the pair\
+        ioPairs.push(\{ input, output \});\
+        // Update the display with the new pair\
+        updateDisplay();\
+    \}\
+\
+    /**\
+     * Updates the on-screen display with all generated input/output pairs.\
+     * @returns \{void\}\
+     */\
+    function updateDisplay() \{\
+        ioDisplay.innerHTML = ''; // Clear previous content\
+        ioPairs.forEach(pair => \{\
+            const pairEl = document.createElement('div');\
+            pairEl.className = 'input-output-grid';\
+            pairEl.innerHTML = `\
+                <div class="bg-gray-50 p-2 rounded-md">\
+                    <p class="text-sm font-semibold text-gray-500">Input</p>\
+                    <p class="text-lg font-bold text-gray-800">$\{pair.input\}</p>\
+                </div>\
+                <div class="bg-gray-50 p-2 rounded-md">\
+                    <p class="text-sm font-semibold text-gray-500">Output</p>\
+                    <p class="text-lg font-bold text-gray-800">$\{pair.output\}</p>\
+                </div>\
+            `;\
+            ioDisplay.appendChild(pairEl);\
+        \});\
+    \}\
+    \
+    /**\
+     * Checks the user's guess against the current rule.\
+     * @returns \{void\}\
+     */\
+    function checkGuess() \{\
+        const userGuess = guessInput.value.trim().toLowerCase().replace(/\\s/g, '');\
+        const correctRule = currentRule.text.toLowerCase().replace(/\\s/g, '');\
+\
+        if (userGuess === correctRule) \{\
+            messageArea.textContent = 'Correct! You got it!';\
+            messageArea.className = 'text-center font-bold text-green-600 mt-4';\
+            submitButton.disabled = true;\
+        \} else \{\
+            roundAttempts++;\
+            if (roundAttempts < maxAttempts) \{\
+                messageArea.textContent = `Incorrect. Try again! You have $\{maxAttempts - roundAttempts\} attempts left.`;\
+                messageArea.className = 'text-center font-bold text-yellow-600 mt-4';\
+                generateNewPair(); // Provide another example\
+            \} else \{\
+                messageArea.textContent = `Sorry, you're out of guesses! The rule was '$\{currentRule.text\}'.`;\
+                messageArea.className = 'text-center font-bold text-red-600 mt-4';\
+                submitButton.disabled = true;\
+            \}\
+        \}\
+    \}\
+\
+    /**\
+     * Resets the game to start a new round.\
+     * @returns \{void\}\
+     */\
+    function startNewRound() \{\
+        // Reset game state\
+        currentRule = rules[Math.floor(Math.random() * rules.length)];\
+        ioPairs = [];\
+        roundAttempts = 0;\
+        \
+        // Reset display\
+        ioDisplay.innerHTML = '';\
+        currentInputEl.textContent = '-';\
+        currentOutputEl.textContent = '-';\
+        guessInput.value = '';\
+        messageArea.textContent = '';\
+        messageArea.className = 'text-center font-medium mt-4';\
+        submitButton.disabled = false;\
+\
+        // Generate the first pair for the new round\
+        generateNewPair();\
+    \}\
+\
+    // --- Event Listeners and Initial Setup ---\
+\
+    submitButton.addEventListener('click', checkGuess);\
+    newRoundButton.addEventListener('click', startNewRound);\
+    guessInput.addEventListener('keydown', (event) => \{\
+        if (event.key === 'Enter' && !submitButton.disabled) \{\
+            checkGuess();\
+        \}\
+    \});\
+\
+    // Start the game when the page loads\
+    window.onload = startNewRound;\
+\
+</script>\
+</body>\
+</html>\
+}
